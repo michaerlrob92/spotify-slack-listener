@@ -1,0 +1,34 @@
+﻿@using Microsoft.AspNetCore.ProtectedBrowserStorage
+@inject ProtectedSessionStorage ProtectedSessionStore
+
+@if (_hasLoaded) {
+    <CascadingValue Value="@this">
+        @ChildContent
+    </CascadingValue>
+}
+ 
+@code {
+    private bool _hasLoaded;
+    
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+    
+    public string SpotifyAccessToken { get; set; }
+    
+    public string SlackAccessToken { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            SpotifyAccessToken = await ProtectedSessionStore.GetAsync<string>(nameof(SpotifyAccessToken));
+            SlackAccessToken = await ProtectedSessionStore.GetAsync<string>(nameof(SlackAccessToken));
+
+            _hasLoaded = true;
+            StateHasChanged();
+        }
+    }
+
+    public async Task SaveChangesAsync() {
+        await ProtectedSessionStore.SetAsync(nameof(SpotifyAccessToken), SpotifyAccessToken);
+        await ProtectedSessionStore.SetAsync(nameof(SlackAccessToken), SlackAccessToken);
+    }
+}

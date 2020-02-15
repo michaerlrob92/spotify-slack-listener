@@ -1,0 +1,70 @@
+﻿@page "/"
+
+@inject NavigationManager NavigationManager
+@inject UserService UserService
+
+<div class="text-center text-white">
+    <h1 class="display-4">Spotify Slack Listener</h1>
+    <p>Update your Slack Status with your current playing song in Spotify.</p>
+
+    <div class="container">
+        <div class="d-flex justify-content-center align-items-center mb-3">
+            <button class="btn @(HasSpotifyToken ? "btn-outline-light" : "btn-light") d-flex align-items-center mx-2" @onclick="@Spotify">
+                <img src="/images/spotify-icon.svg" width="20" height="20" alt="Spotify" class="mr-2"/> <span>@(HasSpotifyToken ? "Re-connect" : "Connect") Spotify</span>
+            </button>
+
+            <button class="btn @(HasSlackToken ? "btn-outline-light" : "btn-light") d-flex align-items-center mx-2" @onclick="@Slack">
+                <img src="https://cdn.brandfolder.io/5H442O3W/as/pl546j-7le8zk-199wkt/Slack_Mark.png?width=80&height=80" width="20" height="20" alt="Slack" class="mr-2"/> <span>@(HasSlackToken ? "Re-connect" : "Connect") Slack</span>
+            </button>
+        </div>
+
+        @if (IsUpdatingStatus) {
+            <p>We've got everything we need and we're updating your status! If there's a problem you can try reconnecting your accounts.</p>
+        } else if (string.IsNullOrWhiteSpace(Error) == false) {
+            <div class="alert alert-danger">
+                <p class="mb-0">@Error</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private AccessTokenStateProvider AccessTokenStateProvider { get; set; }
+
+    private bool HasSpotifyToken { get; set; }
+
+    private bool HasSlackToken { get; set; }
+    
+    private bool IsUpdatingStatus { get; set; }
+    
+    private string Error { get; set; }
+
+    private void Spotify() {
+        NavigationManager.NavigateTo("/spotify-grant");
+    }
+
+    private void Slack() {
+        NavigationManager.NavigateTo("/slack-grant");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            if (string.IsNullOrWhiteSpace(AccessTokenStateProvider.SpotifyAccessToken) == false) {
+                HasSpotifyToken = true;
+                StateHasChanged();
+            }
+
+            if (string.IsNullOrWhiteSpace(AccessTokenStateProvider.SlackAccessToken) == false) {
+                HasSlackToken = true;
+                StateHasChanged();
+            }
+
+            if (HasSpotifyToken && HasSlackToken) {
+                (IsUpdatingStatus, Error) = await UserService.AddOrUpdateUser(AccessTokenStateProvider.SpotifyAccessToken, AccessTokenStateProvider.SlackAccessToken);
+                StateHasChanged();
+            }
+        }
+    }
+
+}

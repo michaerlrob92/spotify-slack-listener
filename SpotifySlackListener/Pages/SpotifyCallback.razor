@@ -1,0 +1,63 @@
+﻿@page "/spotify-callback"
+@using System.Text.Json
+@using Microsoft.AspNetCore.WebUtilities
+
+@inject NavigationManager NavigationManager
+@inject IOptions<SpotifyOptions> SpotifyOptionsAccessor
+@inject SpotifyService SpotifyService
+
+<div class="text-center text-white">
+    <h1 class="display-4">Spotify</h1>
+
+    <div class="container">
+        @if (string.IsNullOrWhiteSpace(Error) == false) {
+            <div class="alert alert-danger text-left">
+                <p>@Error</p>
+                <p class="mb-0">
+                    <a href="/">Click here to return home.</a>
+                </p>
+            </div>
+        } else if (string.IsNullOrWhiteSpace(Code)) {
+            <div class="alert alert-danger text-left">
+                <p class="m-0">Callback from Spotify not found, please try again <a href="/">click here to return home.</a></p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private AccessTokenStateProvider AccessTokenStateProvider { get; set; }
+    
+    private string Code { get; set; } = "code";
+
+    private string Error { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            var uri = new Uri(NavigationManager.Uri);
+            var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+            Code = queryParams.TryGetValue("code", out var code) ? code.First() : string.Empty;
+            Error = queryParams.TryGetValue("error", out var error) ? error.First() : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(Error) == false || string.IsNullOrWhiteSpace(Code)) {
+                StateHasChanged();
+                return;
+            }
+
+            var response = await SpotifyService.GetAccessToken(Code, SpotifyGrantType.Code);
+            if (string.IsNullOrWhiteSpace(response.Error) == false) {
+                Error = $"Invalid response from Spotify, token may have expired. Description from Spotify: '{response.Error}: {response.ErrorDescription}'. Please try again.";
+                StateHasChanged();
+                return;
+            }
+
+            AccessTokenStateProvider.SpotifyAccessToken = JsonSerializer.Serialize(response);
+            await AccessTokenStateProvider.SaveChangesAsync();
+            
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+}

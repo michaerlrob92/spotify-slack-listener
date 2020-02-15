@@ -1,0 +1,26 @@
+﻿@page "/slack-grant"
+
+@inject NavigationManager NavigationManager
+@inject IOptions<SlackOptions> SlackOptionsAccessor
+
+<div class="text-center text-white">
+    <h1 class="display-4">Redirecting to Slack...</h1>
+    <p>We're redirecting you to Slack to connect your account and grant access to update your status.</p>
+    <p><a href="#" @onclick="@RedirectToSlack">Not redirected? Click here to go to Slack.</a></p>
+</div>
+
+@code {
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            RedirectToSlack();
+        }
+
+        return base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void RedirectToSlack() {
+        var options = SlackOptionsAccessor.Value;
+        var slackUrl = $"{options.AuthorizeUri}?client_id={options.ClientId}&scope={options.Scopes}&redirect_uri={options.RedirectUri}";
+        NavigationManager.NavigateTo(slackUrl);
+    }
+}

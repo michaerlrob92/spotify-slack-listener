@@ -1,0 +1,26 @@
+﻿@page "/spotify-grant"
+
+@inject NavigationManager NavigationManager
+@inject IOptions<SpotifyOptions> SpotifyOptionsAccessor
+
+<div class="text-center text-white">
+    <h1 class="display-4">Redirecting to Spotify...</h1>
+    <p>We're redirecting you to Spotify to connect your account and grant access to read your currently playing song.</p>
+    <p><a href="#" @onclick="@RedirectToSpotify">Not redirected? Click here to go to Spotify.</a></p>
+</div>
+
+@code {
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            RedirectToSpotify();
+        }
+
+        return base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void RedirectToSpotify() {
+        var options = SpotifyOptionsAccessor.Value;
+        var spotifyUri = $"{options.AuthorizeUri}?response_type=code&client_id={options.ClientId}&scope={options.Scopes}&redirect_uri={options.RedirectUri}";
+        NavigationManager.NavigateTo(spotifyUri);
+    }
+}
