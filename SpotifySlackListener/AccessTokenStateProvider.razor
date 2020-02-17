@@ -1,26 +1,31 @@
 ﻿@using Microsoft.AspNetCore.ProtectedBrowserStorage
 @inject ProtectedSessionStorage ProtectedSessionStore
+@inject ProtectedLocalStorage ProtectedLocalStorage
+
 
 @if (_hasLoaded) {
     <CascadingValue Value="@this">
         @ChildContent
     </CascadingValue>
 }
- 
+
 @code {
     private bool _hasLoaded;
-    
+
     [Parameter]
     public RenderFragment ChildContent { get; set; }
-    
+
     public string SpotifyAccessToken { get; set; }
-    
+
     public string SlackAccessToken { get; set; }
+
+    public bool IsTrackingUser { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             SpotifyAccessToken = await ProtectedSessionStore.GetAsync<string>(nameof(SpotifyAccessToken));
             SlackAccessToken = await ProtectedSessionStore.GetAsync<string>(nameof(SlackAccessToken));
+            IsTrackingUser = await ProtectedLocalStorage.GetAsync<bool>(nameof(IsTrackingUser));
 
             _hasLoaded = true;
             StateHasChanged();
@@ -30,5 +35,16 @@
     public async Task SaveChangesAsync() {
         await ProtectedSessionStore.SetAsync(nameof(SpotifyAccessToken), SpotifyAccessToken);
         await ProtectedSessionStore.SetAsync(nameof(SlackAccessToken), SlackAccessToken);
+        await ProtectedLocalStorage.SetAsync(nameof(IsTrackingUser), IsTrackingUser);
+    }
+
+    public async Task ClearAsync() {
+        SpotifyAccessToken = string.Empty;
+        SlackAccessToken = string.Empty;
+        IsTrackingUser = false;
+
+        await ProtectedSessionStore.DeleteAsync(nameof(SpotifyAccessToken));
+        await ProtectedSessionStore.DeleteAsync(nameof(SlackAccessToken));
+        await ProtectedLocalStorage.DeleteAsync(nameof(IsTrackingUser));
     }
 }

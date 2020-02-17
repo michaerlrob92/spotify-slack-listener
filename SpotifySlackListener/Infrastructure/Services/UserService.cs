@@ -31,15 +31,16 @@ namespace SpotifySlackListener.Infrastructure.Services
 
             var spotifyToken = JsonSerializer.Deserialize<SpotifyTokenResponse>(spotifyAccess);
             var slackToken = JsonSerializer.Deserialize<SlackTokenResponse>(slackAccess);
-            
+
+            // Make sure we have access tokens for spotify & slack
             if (string.IsNullOrWhiteSpace(spotifyToken.AccessToken) || string.IsNullOrWhiteSpace(slackToken.AccessToken))
             {
                 return (false, "Your spotify access token or slack access token is invalid, please re-connect.");
             }
 
-            // Check if we already have a user for this spotify token in the slack team
+            // If we match an existing user, don't worry about it.
             var user = await _context.Users.FirstOrDefaultAsync(u =>
-                u.SpotifyAccessToken == spotifyToken.AccessToken && u.SlackTeamId == slackToken.TeamId);
+                u.SpotifyAccessToken == spotifyToken.AccessToken && u.SlackAccessToken == slackToken.AccessToken);
 
             if (user == null)
             {
@@ -49,14 +50,13 @@ namespace SpotifySlackListener.Infrastructure.Services
                 {
                     return (false, "Your spotify access token is invalid, please re-connect.");
                 }
-                
-                // Check if we now have a user for the spotify id and team id
+
+                // Match the user to their spotify id and slack access token, spotify access tokens change, slack don't
                 user = await _context.Users.FirstOrDefaultAsync(u =>
-                    u.SpotifyId == spotifyUser.Id && u.SlackTeamId == slackToken.TeamId);
-                
+                    u.SpotifyId == spotifyUser.Id && u.SlackAccessToken == slackToken.AccessToken);
+
                 if (user == null)
                 {
-                    // We really don't have a user, let's create one for the spotify/slack combination
                     user = new User
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -69,18 +69,22 @@ namespace SpotifySlackListener.Infrastructure.Services
                         Created = DateTime.UtcNow,
                         LastUpdated = DateTime.UtcNow
                     };
+
                     _context.Users.Add(user);
                 }
-            }
-            
-            // Update access tokens, they might have changed?
-            user.SpotifyAccessToken = spotifyToken.AccessToken;
-            user.SpotifyRefreshToken = spotifyToken.RefreshToken;
-            user.SlackAccessToken = slackToken.AccessToken;
-            user.SlackTeamId = slackToken.TeamId;
-            user.LastUpdated = DateTime.UtcNow;
+                else
+                {
+                    user.SpotifyId = spotifyUser.Id;
+                    user.SpotifyAccessToken = spotifyToken.AccessToken;
+                    user.SpotifyRefreshToken = spotifyToken.RefreshToken;
+                    user.SlackId = slackToken.UserId;
+                    user.SlackTeamId = slackToken.TeamId;
+                    user.SlackAccessToken = slackToken.AccessToken;
+                    user.LastUpdated = DateTime.UtcNow;
+                }
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            }
 
             return (true, string.Empty);
         }

@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SpotifySlackListener.Infrastructure.Models;
 using SpotifySlackListener.Infrastructure.Options;
@@ -17,10 +18,13 @@ namespace SpotifySlackListener.Infrastructure.Services
 
         private readonly IHttpClientFactory _httpClientFactory;
 
-        public SlackService(IOptions<SlackOptions> options, IHttpClientFactory httpClientFactory)
+        private readonly ILogger<SlackService> _logger;
+
+        public SlackService(IOptions<SlackOptions> options, IHttpClientFactory httpClientFactory, ILogger<SlackService> logger)
         {
             _options = options.Value;
             _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
 
         public async Task<SlackTokenResponse> GetAccessToken(string token)
@@ -40,7 +44,7 @@ namespace SpotifySlackListener.Infrastructure.Services
             return JsonSerializer.Deserialize<SlackTokenResponse>(responseData);
         }
 
-        public async Task<string> UpdateUser(string userSlackAccessToken, string currentStatus, SpotifyPlayerResponse player)
+        public async Task<(bool success, string status, string error)> UpdateUser(string userSlackAccessToken, string currentStatus, SpotifyPlayerResponse player)
         {
             var profileData = new SlackUpdateStatusModel();
 
@@ -55,12 +59,24 @@ namespace SpotifySlackListener.Infrastructure.Services
             {
                 var client = _httpClientFactory.CreateClient();
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", userSlackAccessToken);
-                
+
                 var response = await client.PostAsync(_options.ProfileUri, new StringContent(JsonSerializer.Serialize(profileData), Encoding.UTF8, "application/json"));
                 var responseData = await response.Content.ReadAsStringAsync();
+
+                if (string.IsNullOrWhiteSpace(responseData))
+                {
+                    return (false, currentStatus, SlackErrorType.InvalidResponse);
+                }
+
+                var content = JsonSerializer.Deserialize<SlackUpdateStatusResponse>(responseData);
+                if (!content.Ok)
+                {
+                    _logger.LogError("Error occurred while updating user status: {Error}", content.Error);
+                    return (false, currentStatus, content.Error);
+                }
             }
 
-            return profileData.Profile.StatusText;
+            return (true, profileData.Profile.StatusText, string.Empty);
         }
     }
 }

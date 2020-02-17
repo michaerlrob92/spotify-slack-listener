@@ -28,7 +28,7 @@
 @code {
     [CascadingParameter]
     private AccessTokenStateProvider AccessTokenStateProvider { get; set; }
-    
+
     private string Code { get; set; } = "code";
 
     private string Error { get; set; }
@@ -46,7 +46,7 @@
                 return;
             }
 
-            var response = await SpotifyService.GetAccessToken(Code, SpotifyGrantType.Code);
+            var response = await SpotifyService.GetAccessTokenFromCode(Code);
             if (string.IsNullOrWhiteSpace(response.Error) == false) {
                 Error = $"Invalid response from Spotify, token may have expired. Description from Spotify: '{response.Error}: {response.ErrorDescription}'. Please try again.";
                 StateHasChanged();
@@ -55,7 +55,7 @@
 
             AccessTokenStateProvider.SpotifyAccessToken = JsonSerializer.Serialize(response);
             await AccessTokenStateProvider.SaveChangesAsync();
-            
+
             NavigationManager.NavigateTo("/");
         }
     }

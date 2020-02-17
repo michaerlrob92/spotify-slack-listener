@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,33 +51,52 @@ namespace SpotifySlackListener.Infrastructure.BackgroundServices
                 await using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var spotifyService = scope.ServiceProvider.GetRequiredService<SpotifyService>();
                 var slackService = scope.ServiceProvider.GetRequiredService<SlackService>();
-                
-                // Loop through all of the users in database and update their currently playing song
-                var users = context.Users.OrderBy(u => u.LastUpdated);
+
+                // We only need to retrieve the current song for a spotify id once, group by spotify id
+                var users = context.Users.OrderBy(u => u.Id);
+
                 await foreach (var chunk in users.QueryInChunksOfAsync(100))
                 {
-                    foreach (var user in chunk)
+                    foreach (var group in chunk.GroupBy(u => u.SpotifyId, u => u))
                     {
+                        var firstUser = group.First();
+
                         try
                         {
-                            var player = await spotifyService.GetUserPlayer(user.SpotifyAccessToken);
+                            var player = await spotifyService.GetUserPlayer(firstUser.SpotifyAccessToken);
+
                             if (player == null)
                             {
-                                await UpdateSpotifyUserAccessToken(user, spotifyService, context);
-                                // TODO: I know we don't update here, but next poll we do so not sure what best practice is here
+                                // Get first available refresh token
+                                var refreshToken = firstUser.SpotifyRefreshToken ?? group
+                                    .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u.SpotifyRefreshToken))?.SpotifyRefreshToken;
+
+                                // Update all users with their new refresh/access tokens
+                                await UpdateSpotifyUserAccessToken(group, refreshToken, spotifyService, context);
+
                                 continue;
                             }
-                            
-                            var statusText = await slackService.UpdateUser(user.SlackAccessToken, user.CurrentStatus, player);
-                            if (statusText != user.CurrentStatus)
+
+                            // Update all users with their new status
+                            foreach (var user in group)
                             {
-                                user.CurrentStatus = statusText;
-                                await context.SaveChangesAsync();
+                                var (success, statusText, error) = await slackService.UpdateUser(user.SlackAccessToken, user.CurrentStatus, player);
+
+                                if (success && statusText != user.CurrentStatus)
+                                {
+                                    user.CurrentStatus = statusText;
+                                }
+                                else if (error == SlackErrorType.InvalidAuth)
+                                {
+                                    context.Users.Remove(user);
+                                }
                             }
+
+                            await context.SaveChangesAsync();
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Error occurred while updating user {SpotifyAccessToken} {SlackAccessToken}", user.SpotifyAccessToken, user.SlackAccessToken);
+                            _logger.LogError(ex, "Error occurred while updating user {SpotifyId}", firstUser.SpotifyId);
                         }
                     }
                 }
@@ -87,19 +107,29 @@ namespace SpotifySlackListener.Infrastructure.BackgroundServices
             }
         }
 
-        private static async Task UpdateSpotifyUserAccessToken(User user, SpotifyService spotifyService, ApplicationDbContext context)
+        private static async Task UpdateSpotifyUserAccessToken(IEnumerable<User> users, string refreshToken, SpotifyService spotifyService, ApplicationDbContext context)
         {
-            var token = await spotifyService.GetAccessToken(user.SpotifyRefreshToken, SpotifyGrantType.RefreshToken);
+            var token = await spotifyService.GetAccessTokenFromRefreshToken(refreshToken);
             if (string.IsNullOrWhiteSpace(token.Error))
             {
-                user.SpotifyAccessToken = token.AccessToken;
-                user.SpotifyRefreshToken = token.RefreshToken;
+                foreach (var user in users)
+                {
+                    user.SpotifyAccessToken = token.AccessToken;
+
+                    if (string.IsNullOrWhiteSpace(token.RefreshToken) == false)
+                    {
+                        user.SpotifyRefreshToken = token.RefreshToken;
+                    }
+
+                    user.LastUpdated = DateTime.UtcNow;
+                }
             }
             else
             {
                 // Invalid tokens, we remove from database
-                context.Users.Remove(user);
+                context.Users.RemoveRange(users);
             }
+
             await context.SaveChangesAsync();
         }
     }
