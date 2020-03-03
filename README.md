@@ -3,7 +3,7 @@ Combines Spotify and Slack Api to update your Slack status with your current pla
 
 - [Slack Api](https://api.slack.com/web)
 - [Spotify Api](https://developer.spotify.com/documentation/web-api/reference/)
-- [Demo](https://www.slackspotifylistener.com) - A demo of this project, it's on a really lightweight server to please don't overload. App is unapproved on Slack.
+- [Demo](https://www.spotifyslacklistener.com) - A demo of this project, it's on a really lightweight server so please don't overload. App is unapproved on Slack.
 
 ## Setup Instructions
 
