@@ -87,6 +87,14 @@ namespace SpotifySlackListener.Infrastructure.Services
                 return null;
             }
 
+            if (response.StatusCode == HttpStatusCode.NoContent)
+            {
+                return new SpotifyPlayerResponse
+                {
+                    IsPlaying = false
+                };
+            }
+
             var responseData = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<SpotifyPlayerResponse>(responseData);
         }
