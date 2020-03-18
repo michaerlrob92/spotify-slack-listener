@@ -20,4 +20,14 @@
       <Folder Include="Infrastructure\Migrations" />
     </ItemGroup>
 
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="published\web.config" />
+      <_ContentIncludedByDefault Remove="published\appsettings.Development.json" />
+      <_ContentIncludedByDefault Remove="published\appsettings.json" />
+      <_ContentIncludedByDefault Remove="published\package-lock.json" />
+      <_ContentIncludedByDefault Remove="published\package.json" />
+      <_ContentIncludedByDefault Remove="published\SpotifySlackListener.deps.json" />
+      <_ContentIncludedByDefault Remove="published\SpotifySlackListener.runtimeconfig.json" />
+    </ItemGroup>
+
 </Project>
