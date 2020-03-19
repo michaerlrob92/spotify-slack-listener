@@ -22,6 +22,7 @@ jobs:
     - name: Deploy to Netlify
       uses: netlify/actions/cli@master
       env:
-        CD: true
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       with:
-        args: deploy --dir=published --prod --auth ${{ secrets.NETLIFY_AUTH_TOKEN }} --site ${{ secrets.NETLIFY_SITE_ID }}
+        args: deploy --dir=published --prod
