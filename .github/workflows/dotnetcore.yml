@@ -16,7 +16,7 @@ jobs:
       with:
         dotnet-version: 3.1.200
     - name: Build with dotnet
-      run: dotnet build SpotifySlackListener/SpotifySlackListener.csproj --configuration Release
+      run: dotnet build SpotifySlackListener/SpotifySlackListener.csproj --configuration Release --runtime linux-x64
     - name: Publish using dotnet
       run: dotnet publish SpotifySlackListener/SpotifySlackListener.csproj --configuration Release --output published --no-build --runtime linux-x64
     - name: Deploy to Netlify
