@@ -25,5 +25,5 @@ jobs:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       with:
-        args: deploy --prod
+        args: deploy --dir=published --prod
         secrets: '["NETLIFY_AUTH_TOKEN", "NETLIFY_SITE_ID"]'
