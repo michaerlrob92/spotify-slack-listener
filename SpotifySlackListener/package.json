@@ -16,7 +16,7 @@
     "gulp-plumber": "^1.2.1",
     "lodash.template": "^4.5.0",
     "clean-css": "^4.2.3",
-    "minimist": "^1.2.5"
+    "minimist": "^1.2.6"
   },
   "browserslist": [
     "last 2 versions"
